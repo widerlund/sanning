@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Sanning</title></head>
+  <style>
+    body { font-family: monospace; }
+  </style>
+<body>
+<h1>Sanning</h1>
+${MESSAGE}
+</body>
+</html>

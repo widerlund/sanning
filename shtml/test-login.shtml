@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Sanning</title></head>
+  <style>
+    body { font-family: monospace; }
+  </style>
+<body>
+<h2>Sanning</h2>
+
+<p>
+  Test login page.<br>
+  This test pages accepts any string and you may use a civic registration number (personnummer) for test purposes if you wish.
+</p>
+
+Enter your unique identity.
+<form action="answer" method="post">
+  ID: <label><input type="text" name="ik"/></label>
+  <input type="submit" value="Login"/>
+  <input type="hidden" name="o" value="${OPTION}"/>
+</form>
+</body>
+</html>

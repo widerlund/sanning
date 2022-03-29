@@ -1,0 +1,90 @@
+<?xml version="1.0"?>
+
+<project name="sanning" default="all" basedir=".">
+
+    <property name="app" value="sanning"/>
+    <property name="version" value="0.3"/>
+
+    <property name="build.dir" value="."/>
+    <property name="build.src" value="${build.dir}/src"/>
+    <property name="build.dest" value="${build.dir}/classes"/>
+    <property name="jar.file" value="${app}.jar"/>
+
+    <property name="dist.dir" value="${build.dir}/dist"/>
+    <property name="dist.app.dir" value="${dist.dir}/${app}-${version}"/>
+    <property name="dist.tar.file" value="${dist.dir}/${app}-${version}.tar"/>
+
+    <property name="source" value="11"/>
+    <property name="debug" value="on"/>
+    <property name="optimize" value="off"/>
+    <property name="deprecation" value="on"/>
+
+    <path id="compile.classpath">
+        <pathelement location="${build.dest}"/>
+    </path>
+
+    <target name="prepare">
+        <mkdir dir="${build.dest}"/>
+    </target>
+
+    <target name="clean">
+        <delete dir="${build.dest}"/>
+        <delete dir="${dist.dir}"/>
+    </target>
+
+    <target name="compile" depends="prepare">
+        <javac includeantruntime="false"
+               srcdir="${build.src}"
+               destdir="${build.dest}"
+               debug="${debug}"
+               deprecation="${deprecation}"
+               optimize="${optimize}"
+               includes="**/*.java">
+            <classpath refid="compile.classpath"/>
+        </javac>
+        <copy todir="${build.dest}"><fileset dir="shtml"/></copy>
+    </target>
+
+    <target name="all" depends="compile"/>
+
+    <target name="create-jar" depends="compile">
+        <mkdir dir="${dist.dir}"/>
+        <jar destfile="${dist.dir}/${app}.jar">
+            <fileset dir="${build.dest}">
+                <include name="**"/>
+            </fileset>
+            <manifest>
+                <attribute name="Implementation-Vendor" value="${app}"/>
+                <attribute name="Implementation-Title" value="${app}"/>
+                <attribute name="Implementation-Version" value="${version}"/>
+            </manifest>
+        </jar>
+    </target>
+
+    <target name="release" depends="create-jar">
+        <mkdir dir="${dist.app.dir}"/>
+
+        <copy file="etc/README.txt" todir="${dist.app.dir}"/>
+        <replace file="${dist.app.dir}/README.txt" token="@@@" value="v${version}"/>
+
+        <mkdir dir="${dist.app.dir}/bin"/>
+        <copy todir="${dist.app.dir}/bin"><fileset dir="bin"/></copy>
+
+        <mkdir dir="${dist.app.dir}/lib"/>
+        <copy file="${dist.dir}/${app}.jar" todir="${dist.app.dir}/lib"/>
+        <copy file="etc/sanning.cert" todir="${dist.app.dir}/lib"/>
+
+        <mkdir dir="${dist.app.dir}/sannings"/>
+        <copy todir="${dist.app.dir}/sannings"><fileset dir="sannings"/></copy>
+
+        <tar longfile="gnu" destfile="${dist.tar.file}">
+            <tarfileset dir="${dist.app.dir}" prefix="${app}-${version}">
+                <exclude name="bin/*"/>
+            </tarfileset>
+            <tarfileset dir="${dist.app.dir}" prefix="${app}-${version}" filemode="755"> <!-- All bin files executable. -->
+                <include name="bin/*"/>
+            </tarfileset>
+        </tar>
+    </target>
+
+</project>

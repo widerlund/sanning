@@ -1,0 +1,14 @@
+Which ice cream flavor is best?
+Please consider the environmental impact of your answer.
+
+Vanilla
+Strawberry
+Chocolate
+I do not like ice cream
+
+0:0:0:2
+
+2022-03-26T05:46:48.943+01:00 +knx:0
+2022-03-26T05:49:33.786+01:00 kgey:2
+
+3af7c81e6676569827df606c38e68713b9646fa933dce995d9ee10343f9114aa
