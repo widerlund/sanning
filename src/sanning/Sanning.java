@@ -254,7 +254,7 @@ final class Sanning {
         sb.append('\n');
 
         // Seal.
-        sb.append(genSeal()).append('\n');
+        sb.append(genSeal());
 
         return sb.toString();
     }
@@ -266,42 +266,79 @@ final class Sanning {
     public static void main(String[] args) throws Throwable {
         // Usage.
         if ((args.length < 1) || (args.length > 3)) {
-            System.out.println("sanning.sh <sanning path> [<identity> [<answer option>]]");
+            System.out.println("sanning.sh <sanning path> [<reference>] [<identity> [<answer option>]]");
             System.exit(2);
         }
         File file = new File(args[0]);
         Sanning sanning = new Sanning(file.getName(), file.getParent());
 
+        // Questionnaire.
         System.out.println(sanning.title);
         System.out.println(sanning.text + '\n');
 
-        for (String option : sanning.options) {
-            System.out.println(option);
-        }
-
-        String ak = null;
+        // Lookup or submit answer.
+        Answer answer = null;
+        String msg = null;
         if (args.length > 1) {
-            String ik = args[1];
-            ak = sanning.generateAK(ik);
-        }
-
-        if (args.length == 2) {
-            // Lookup previous answer.
-            Answer answer = sanning.lookupAnswer(ak);
-            System.out.println("\nANSWER:" + (answer != null ? "\n" + answer.ak : " not found"));
-        } else if (args.length == 3) {
-            // Add new answer.
-            int option = Integer.parseInt(args[2]);
             try {
-                Answer answer = sanning.doAnswer(ak, option);
-                sanning.persist();
-                System.out.println("\nYour answer:" + answer.option);
-                System.out.println("Reference: " + ak);
-                System.out.println("Time: " + answer.ts);
+                if (args.length == 2) {
+                    // Lookup previous answer.
+                    String ak = args[1];
+                    answer = sanning.lookupAnswer(ak);
+
+                    // Show answer for reference.
+                    msg = (answer != null) ? "Answer found!" : "No answer found for reference '" + ak + "'.";
+                } else { // args.length == 3
+                    // Lookup previous answer.
+                    String ik = args[1];
+                    String ak = sanning.generateAK(ik);
+                    answer = sanning.lookupAnswer(ak);
+
+                    if (answer == null) {
+                        // Submit new answer.
+                        int option = Integer.parseInt(args[2]);
+                        answer = sanning.doAnswer(ik, option);
+                        sanning.persist();
+                        msg = "Answer submitted!";
+                    } else {
+                        msg = "You have already answered!";
+                    }
+                }
+
             } catch (IllegalStateException | IllegalArgumentException e) {
-                System.out.println("ERROR:\n" + e.getMessage());
+                msg = "ERROR: " + e.getMessage();
             }
         }
+
+        // Summary.
+        int total = 0;
+        for (int count : sanning.summary) {
+            total += count;
+        }
+        for (int ix = 0; ix < sanning.summary.length; ix++) {
+            int count = sanning.summary[ix];
+            float percentage = total > 0 ? (float)count * 100 / total : 0f;
+            System.out.printf("%-10s %6d  %6.2f%%%n", sanning.options[ix], count, percentage);
+        }
+
+        // Message.
+        if (msg != null) {
+            System.out.println('\n' + msg);
+        }
+
+        // Answer.
+        if (answer != null) {
+            System.out.println("\nAnswer:    " + answer.option);
+            System.out.println("Reference: " + answer.ak);
+            System.out.println("Time:      " + answer.ts);
+        }
+
+        // Last updated time.
+        String lastTS = sanning.lastTS();
+        if (!lastTS.isEmpty()) {
+            System.out.println("\nLast Updated: " + lastTS);
+        }
+
     }
 
 }

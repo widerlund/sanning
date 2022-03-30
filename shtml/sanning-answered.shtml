@@ -7,6 +7,7 @@
     body { font-family: monospace; }
     h2 { margin-bottom: 0.2em; }
     h3 { margin-bottom: 0.2em; }
+    ul { list-style-type:none; padding: 0; }
     td { padding-inline-end: 2em; }
     .fill { background-color: black; }
     .right { text-align: end; }
@@ -20,7 +21,7 @@
 
 <h3>${MESSAGE}</h3>
 <table>
-  <tr><td>Your answer:</td><td class="b">${OPTION}</td></tr>
+  <tr><td>Answer:</td><td class="b">${OPTION}</td></tr>
   <tr><td>Reference:</td><td class="b">${REF}</td></tr>
   <tr><td>Time:</td><td class="b">${ANSWER_TIME}</td></tr>
 </table>
@@ -32,6 +33,6 @@
 
 <p>Result data file: <a href="${RESULT}">${RESULT}</a></p>
 
-<p class="ts">Time: ${TOTAL_TIME}</p>
+<p class="ts">${LAST_UPDATED}</p>
 </body>
 </html>

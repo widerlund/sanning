@@ -124,24 +124,25 @@ final class SanningHTTP implements HTTPProcessor {
         for (int ix = 0; ix < sanning.summary.length; ix++) {
             int count = sanning.summary[ix];
             float percentage = total > 0 ? (float)count * 100 / total : 0f;
-            summary.append("<tr><td>").append(sanning.options[ix]).append("</td><td class=\"right\">").
-                   append(count).append("</td><td class=\"right\">").append(String.format("%.2f", percentage)).append("%</td></tr>");
+            summary.append(String.format("<tr><td>%s</td><td class=\"right\">%d</td><td class=\"right\">%.2f%%</td></tr>\n",
+                                         sanning.options[ix], count, percentage));
         }
-        summary.append("  <tr><td colspan=\"3\" class=\"fill\"/>\n  <tr><td>Total:</td><td>").append(total).append("</td></tr>\n");
+        summary.append(String.format("<tr><td colspan=\"3\" class=\"fill\"/></td></tr>\n" +
+                                     "<tr><td>Total:</td><td>%d</td></tr>\n", total));
 
         // RESULT data file href.
         String result = "<a href=" + name + "/result>" + name + "</a>";
 
-        // TOTAL_TIME
-        String totalTime = sanning.lastTS();
-        totalTime = totalTime.isEmpty() ? "" : "Time: " + totalTime;
+        // LAST_UPDATED
+        String lastUpdated = sanning.lastTS();
+        lastUpdated = lastUpdated.isEmpty() ? "" : "Last Updated: " + lastUpdated;
 
         if (answer == null) {
             // Render unanswered sanning.
             StringBuilder options = new StringBuilder();
             int value = 0;
             for (String option : sanning.options) {
-                options.append("    <li><button name=\"option\"").append(" value=\"").append(value++).append("\">").append(option).append("</button></li>\n");
+                options.append(String.format("    <li><button name=\"option\" value=\"%d\">%s</button></li>\n", value++, option));
             }
             return renderTemplate("sanning",
                                   "SANNING", sanning.name,
@@ -150,19 +151,19 @@ final class SanningHTTP implements HTTPProcessor {
                                   "OPTIONS", options,
                                   "SUMMARY", summary,
                                   "RESULT", result,
-                                  "TOTAL_TIME", totalTime);
+                                  "LAST_UPDATED", lastUpdated);
         } else {
             return renderTemplate("sanning-answered",
                                   "SANNING", sanning.name,
                                   "TITLE", sanning.title,
                                   "TEXT", sanning.text,
-                                  "MESSAGE", answer.isOld ? "You have already answered!" : "Thank you!",
+                                  "MESSAGE", answer.isOld ? "You have already answered!" : "Answer submitted!",
                                   "OPTION", answer.option,
                                   "REF", answer.ak,
                                   "ANSWER_TIME", answer.ts,
                                   "SUMMARY", summary,
                                   "RESULT", result,
-                                  "TOTAL_TIME", totalTime);
+                                  "LAST_UPDATED", lastUpdated);
         }
 
     }
@@ -170,7 +171,7 @@ final class SanningHTTP implements HTTPProcessor {
     String renderList() {
         StringBuilder list = new StringBuilder();
         for (Sanning sanning : sannings) {
-            list.append("  <li><a href=\"").append(sanning.name).append("\">").append(sanning.title).append("</a></li>\n");
+            list.append(String.format("  <li><a href=\"%s\">%s</a></li>\n", sanning.name, sanning.title));
         }
 
         return renderTemplate("list",

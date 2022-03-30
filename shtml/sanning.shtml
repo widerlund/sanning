@@ -5,9 +5,14 @@
   <title>Sanning</title></head>
   <style>
     body { font-family: monospace; }
-    h1 { margin-bottom: 0.2em; }
     h2 { margin-bottom: 0.2em; }
+    h3 { margin-bottom: 0.2em; }
     ul { list-style-type:none; padding: 0; }
+    td { padding-inline-end: 2em; }
+    .fill { background-color: black; }
+    .right { text-align: end; }
+    .ts { font-size: 80%; color: rgba(0, 0, 0, 0.3); }
+    .b { font-weight: bold; }
   </style>
 <body>
 <h1><a href="/">Sanning</a> / ${TITLE}</h1>
@@ -27,6 +32,6 @@
 
 <p>Result data file: <a href="${RESULT}">${RESULT}</a></p>
 
-<p class="ts">${TOTAL_TIME}</p>
+<p class="ts">${LAST_UPDATED}</p>
 </body>
 </html>
