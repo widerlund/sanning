@@ -12,6 +12,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import sanning.http.HTTPProcessor;
@@ -20,6 +22,8 @@ import sanning.http.HTTPResponse;
 import sanning.http.HTTPServer;
 
 final class SanningHTTP implements HTTPProcessor {
+
+    static final Pattern REQUEST_PATTERN = Pattern.compile("(?<method>GET|POST) \\/*(?<name>[^ \\/]*)(\\/?(?<op>[^ \\/]+)?)");
 
     final List<Sanning> sannings;
     final Map<String,Sanning> sanningMap;
@@ -47,22 +51,23 @@ final class SanningHTTP implements HTTPProcessor {
 
     public void process(HTTPRequest request, HTTPResponse response) {
         // Parse method and path.
-        int ix1 = request.requestLine.indexOf(' ');
-        String method = request.requestLine.substring(0, ix1);
-        String path = request.requestLine.substring(ix1 + 1, request.requestLine.indexOf(' ', ix1 + 1));
+        Matcher m = REQUEST_PATTERN.matcher(request.line);
+        if (!m.find()) {
+            throw new IllegalArgumentException("invalid request: " + request);
+        }
 
-        // Parse sanning name.
-        ix1 = path.indexOf('/', 2);
-        String name = (ix1 != -1) ? path.substring(1, ix1) : path.substring(1);
+        String method = m.group("method");
+        String name = m.group("name");
+        String op = m.group("op");
 
         response.headers.setValue("Content-Type", "text/html");
         CharSequence responseBody = null;
         if ("GET".equals(method)) {
-            if ("/".equals(path)) {
+            if (name.isEmpty()) {
                 // List sannings.
                 responseBody = renderList();
             } else {
-                if (path.endsWith("result")) {
+                if ("result".equals(op)) {
                     // Download result.
                     response.headers.setValue("Content-Type", "text/plain");
                     try {
@@ -76,20 +81,16 @@ final class SanningHTTP implements HTTPProcessor {
                 }
             }
         } else if ("POST".equals(method)) {
-            ix1 = request.body.indexOf('=');
-            int ix2 = request.body.indexOf('&');
-            if (ix2 == -1) {
-                // Send answer through login page.
-                String option = request.body.substring(ix1 + 1);
+            String ik = request.extractBodyParameter("ik");
+            String option = request.extractBodyParameter("option");
+
+            if (ik == null) {
+                // Send answer option through login page.
                 responseBody = renderTemplate("test-login",
                                               "SANNING", name,
                                               "OPTION", option);
             } else {
-                // Submit answer to sanning.
-                String ik = request.body.substring(ix1 + 1, ix2);
-                ix1 = request.body.indexOf('=', ix2);
-                String option = request.body.substring(ix1 + 1);
-
+                // Submit answer option to sanning.
                 try {
                     Sanning sanning = sanningMap.get(name);
                     Answer answer = sanning.doAnswer(ik, Integer.parseInt(option));
