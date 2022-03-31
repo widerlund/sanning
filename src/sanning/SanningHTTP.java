@@ -45,7 +45,6 @@ final class SanningHTTP implements HTTPProcessor {
         loadTemplate("error");
         loadTemplate("list");
         loadTemplate("sanning");
-        loadTemplate("sanning-answered");
         loadTemplate("test-login");
     }
 
@@ -77,7 +76,7 @@ final class SanningHTTP implements HTTPProcessor {
                     }
                 } else {
                     // Show sanning.
-                    responseBody = renderSanning(name, null);
+                    responseBody = renderSanning(name, Answer.EMPTY);
                 }
             }
         } else if ("POST".equals(method)) {
@@ -138,35 +137,28 @@ final class SanningHTTP implements HTTPProcessor {
         String lastUpdated = sanning.lastTS();
         lastUpdated = lastUpdated.isEmpty() ? "" : "Last Updated: " + lastUpdated;
 
-        if (answer == null) {
-            // Render unanswered sanning.
-            StringBuilder options = new StringBuilder();
-            int value = 0;
-            for (String option : sanning.options) {
-                options.append(String.format("    <li><button name=\"option\" value=\"%d\">%s</button></li>\n", value++, option));
-            }
-            return renderTemplate("sanning",
-                                  "SANNING", sanning.name,
-                                  "TITLE", sanning.title,
-                                  "TEXT", sanning.text,
-                                  "OPTIONS", options,
-                                  "SUMMARY", summary,
-                                  "RESULT", result,
-                                  "LAST_UPDATED", lastUpdated);
-        } else {
-            return renderTemplate("sanning-answered",
-                                  "SANNING", sanning.name,
-                                  "TITLE", sanning.title,
-                                  "TEXT", sanning.text,
-                                  "MESSAGE", answer.isOld ? "You have already answered!" : "Answer submitted!",
-                                  "OPTION", answer.option,
-                                  "REF", answer.ak,
-                                  "ANSWER_TIME", answer.ts,
-                                  "SUMMARY", summary,
-                                  "RESULT", result,
-                                  "LAST_UPDATED", lastUpdated);
+        StringBuilder options = new StringBuilder();
+        int value = 0;
+        for (String option : sanning.options) {
+            options.append(String.format("    <li><button name=\"option\" value=\"%d\">%s</button></li>\n", value++, option));
         }
 
+        // Render unanswered sanning.
+        return renderTemplate("sanning",
+                              "SANNING", sanning.name,
+                              "TITLE", sanning.title,
+                              "TEXT", sanning.text.replace("\n", "<br>"),
+                              "OPTIONS_STATE", (answer == Answer.EMPTY) ? "enabled" : "disabled",
+                              "OPTIONS", options,
+                              "MESSAGE_STATE", (answer != Answer.EMPTY) ? "enabled" : "disabled",
+                              "MESSAGE", answer.isOld ? "You have already answered!" : "Thank you! Your answer has been recorded!",
+                              "OPTION", answer.option,
+                              "REF", answer.ak,
+                              "ANSWER_TIME", answer.ts,
+                              "SUMMARY", summary,
+                              "SUMMARY", summary,
+                              "RESULT", result,
+                              "LAST_UPDATED", lastUpdated);
     }
 
     String renderList() {

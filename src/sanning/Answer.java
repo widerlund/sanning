@@ -2,6 +2,8 @@ package sanning;
 
 final class Answer {
 
+    static final Answer EMPTY = new Answer("", 0, "", "", false);
+
     final String option;
     final int optionNum;
     final String ak;

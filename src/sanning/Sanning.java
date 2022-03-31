@@ -68,7 +68,7 @@ final class Sanning {
      * @param option answer option
      * @return timestamped answer
      */
-    Answer doAnswer(String ik, int option) throws IOException {
+    synchronized Answer doAnswer(String ik, int option) throws IOException {
         // Generate AK.
         String ak = generateAK(ik);
 
@@ -129,7 +129,7 @@ final class Sanning {
 
 
     /** Timestamp of last answer. */
-    String lastTS() {
+    synchronized String lastTS() {
         String lastAnswerLine = answers.substring(Math.max(0, answers.length() - (Util.ISO_8601_LEN + 1 + Sanning.AK_LEN + 1 + 4)));
                                                                   // NOTE: 4 is maximum length of available number of options -^
         int ix = lastAnswerLine.indexOf('\n') + 1;
@@ -298,8 +298,7 @@ final class Sanning {
                         // Submit new answer.
                         int option = Integer.parseInt(args[2]);
                         answer = sanning.doAnswer(ik, option);
-                        sanning.persist();
-                        msg = "Answer submitted!";
+                        msg = "Thank you! You answer has been recorded!";
                     } else {
                         msg = "You have already answered!";
                     }

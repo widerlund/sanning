@@ -1,10 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <head>
   <meta charset="UTF-8">
-  <title>Sanning</title></head>
+  <title>Sanning</title>
   <style>
-    body { font-family: monospace; }
+    body { font-family: monospace; background-color: #fffaef; }
     h2 { margin-bottom: 0.2em; }
     h3 { margin-bottom: 0.2em; }
     ul { list-style-type:none; padding: 0; }
@@ -14,16 +15,33 @@
     .ts { font-size: 80%; color: rgba(0, 0, 0, 0.3); }
     .b { font-weight: bold; }
   </style>
-<body>
+  <script type="text/javascript">
+    function removeDisabled() {
+      for (e of document.getElementsByClassName('disabled')) {
+        e.remove();
+      }
+    }
+  </script>
+</head>
+<body onload="removeDisabled()">
 <h1><a href="/">Sanning</a> / ${TITLE}</h1>
 
-<pre>${TEXT}</pre>
+<p>${TEXT}</p>
 
-<form action="${SANNING}/answer" method="post">
+<form class="${OPTIONS_STATE}" action="${SANNING}/answer" method="post">
   <ul>
     ${OPTIONS}
   </ul>
 </form>
+
+<span class="${MESSAGE_STATE}">
+<h3>${MESSAGE}</h3>
+<table>
+  <tr><td>Answer:</td><td class="b">${OPTION}</td></tr>
+  <tr><td>Reference:</td><td class="b">${REF}</td></tr>
+  <tr><td>Time:</td><td class="b">${ANSWER_TIME}</td></tr>
+</table>
+</span>
 
 <h3>Current Results</h3>
 <table>
