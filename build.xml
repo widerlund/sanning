@@ -3,7 +3,7 @@
 <project name="sanning" default="all" basedir=".">
 
     <property name="app" value="sanning"/>
-    <property name="version" value="0.3.3"/>
+    <property name="version" value="0.4"/>
 
     <property name="build.dir" value="."/>
     <property name="build.src" value="${build.dir}/src"/>
@@ -62,21 +62,24 @@
     </target>
 
     <target name="release" depends="create-jar">
+        <!-- Distribution directory structure. -->
         <mkdir dir="${dist.app.dir}"/>
-
-        <copy file="etc/README.txt" todir="${dist.app.dir}"/>
-        <replace file="${dist.app.dir}/README.txt" token="@@@" value="v${version}"/>
-
         <mkdir dir="${dist.app.dir}/bin"/>
-        <copy todir="${dist.app.dir}/bin"><fileset dir="bin"/></copy>
-
         <mkdir dir="${dist.app.dir}/lib"/>
-        <copy file="${dist.dir}/${app}.jar" todir="${dist.app.dir}/lib"/>
-        <copy file="etc/sanning.cert" todir="${dist.app.dir}/lib"/>
 
+        <!-- Distribution files. -->
+        <copy file="etc/README.txt" todir="${dist.app.dir}"/>                        <!-- README.         -->
+        <replace file="${dist.app.dir}/README.txt" token="@@@" value="v${version}"/>
+        <copy todir="${dist.app.dir}/bin"><fileset dir="bin"/></copy>                <!-- Launch scripts. -->
+        <copy file="${dist.dir}/${app}.jar" todir="${dist.app.dir}/lib"/>            <!-- Main jar file.  -->
+        <copy file="etc/sanning-test.jks" todir="${dist.app.dir}/lib"/>              <!-- Keystore with test certificates. -->
+        <copy file="etc/sanning-test-bankid.jks" todir="${dist.app.dir}/lib"/>       <!-- Keystore with test certificates for BankID. -->
+
+        <!-- Example sannings. -->
         <mkdir dir="${dist.app.dir}/sannings"/>
         <copy todir="${dist.app.dir}/sannings"><fileset dir="sannings"/></copy>
 
+        <!-- Distribution tar file. -->
         <tar longfile="gnu" destfile="${dist.tar.file}">
             <tarfileset dir="${dist.app.dir}" prefix="${app}-${version}">
                 <exclude name="bin/*"/>

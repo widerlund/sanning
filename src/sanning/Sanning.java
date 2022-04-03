@@ -2,7 +2,6 @@ package sanning;
 
 import static sanning.Util.hash;
 import static sanning.Util.toBase64;
-import static sanning.Util.toBytes;
 import static sanning.Util.toHex;
 import static sanning.Util.toISO8601;
 
@@ -20,7 +19,8 @@ import java.util.Set;
 
 final class Sanning {
 
-    static final int AK_LEN = 4;  // Default anonymous key length (characters).
+    static final int AK_LEN = toBase64(hash("")).length(); // Length of anonymous key (base 64 encoded SHA-256 hash).
+    static final int PO_LEN = toBase64(hash("")).length(); // Length of protected option (base 64 encoded SHA-256 hash).
 
     final String name;
 
@@ -64,36 +64,42 @@ final class Sanning {
 
     /**
      * Answer sanning with one option.
-     * @param ik     identity key
-     * @param option answer option
+     * @param ik        identity key
+     * @param optionNum answer option number
+     * @param p         personal code
      * @return timestamped answer
      */
-    synchronized Answer doAnswer(String ik, int option) throws IOException {
+    synchronized Answer doAnswer(String ik, int optionNum, String p) throws IOException {
+        if (optionNum >= summary.length) {
+            throw new IllegalArgumentException("invalid answer: " + optionNum);
+        }
+        String o = options[optionNum];
+
         // Generate AK.
         String ak = generateAK(ik);
 
+        // Generate PO.
+        String po = generatePO(ak, p, o);
+
         // Verify that AK has not answered.
-        Answer oldAnswer = lookupAnswer(ak);
+        Answer oldAnswer = lookupAnswer(ak, p);
         if (oldAnswer != null) {
             return oldAnswer;
         }
 
         // Update summary.
-        if (option >= summary.length) {
-            throw new IllegalArgumentException("invalid answer: " + option);
-        }
-        summary[option]++;
+        summary[optionNum]++;
 
         // Timestamp.
         String ts = toISO8601(System.currentTimeMillis());
 
         // Create new answer line.
-        answers.append(ts).append(" ").append(ak).append(":").append(option).append('\n');
+        answers.append(ts).append(" ").append(ak).append(":").append(po).append('\n');
 
         // Persist (always for now!).
         persist();
 
-        return new Answer(options[option], option, ak, ts, false);
+        return new Answer(ts, ak, po, o, false);
     }
 
     String persist() throws IOException {
@@ -109,19 +115,29 @@ final class Sanning {
      * Lookup answer line for ak.
      * @return answer line or null if not found
      */
-    Answer lookupAnswer(String ak) {
+    Answer lookupAnswer(String ak, String p) {
         int ix1 = (answers != null) ? answers.indexOf(" " + ak + ":") : -1;
         if (ix1 != -1) {
             int ix2 = answers.indexOf("\n", ix1);
             String answerLine = answers.substring(ix1 - Util.ISO_8601_LEN, ix2);
 
-            // <ts> <ak>:<option number>
+            // <ts> <ak>:<po>
             ix1 = answerLine.indexOf(' ');
             String ts = answerLine.substring(0, ix1);
             ix2 = answerLine.indexOf(':', ix1);
-            int optionNum = Integer.parseInt(answerLine.substring(ix2 + 1));
-            String option = options[optionNum];
-            return new Answer(option, optionNum, ak, ts, true);
+
+            String po = answerLine.substring(ix2 + 1);
+            String option = null;
+            if (p != null) {
+                // Use P to reveal actual option.
+                for (String o : options) {
+                    if (generatePO(ak, p, o).equals(po)) {
+                        option = o;
+                        break;
+                    }
+                }
+            }
+            return new Answer(ts, ak, po, option, true);
         } else {
             return null;
         }
@@ -130,8 +146,7 @@ final class Sanning {
 
     /** Timestamp of last answer. */
     synchronized String lastTS() {
-        String lastAnswerLine = answers.substring(Math.max(0, answers.length() - (Util.ISO_8601_LEN + 1 + Sanning.AK_LEN + 1 + 4)));
-                                                                  // NOTE: 4 is maximum length of available number of options -^
+        String lastAnswerLine = answers.substring(Math.max(0, answers.length() - (Util.ISO_8601_LEN + 1 + Sanning.AK_LEN + 1 + Sanning.PO_LEN)));
         int ix = lastAnswerLine.indexOf('\n') + 1;
         if (ix >= lastAnswerLine.length()) {
             ix = 0;
@@ -148,9 +163,20 @@ final class Sanning {
      * @param ik identity key
      */
     String generateAK(String ik) {
-        byte[] akBytes = hash(toBytes(text), toBytes(ik));
-        String akBase64 = toBase64(akBytes);
-        return akBase64.substring(0, AK_LEN);
+        byte[] akBytes = hash(text, ik);
+        return toBase64(akBytes);
+    }
+
+    /**
+     * Generate protected option, PO.
+     * @param ak anonymous key
+     * @param p personal code
+     * @param o option
+     * @return
+     */
+    String generatePO(String ak, String p, String o) {
+        byte[] poBytes = hash(ak, p, o);
+        return toBase64(poBytes);
     }
 
     /**
@@ -201,9 +227,9 @@ final class Sanning {
             if (line.equals("")) {
                 break;
             } else {
-                String key = line.substring(Util.ISO_8601_LEN + 1, Util.ISO_8601_LEN + 1 + Sanning.AK_LEN);
-                if (!keySet.add(key)) {
-                    throw new IllegalStateException("duplicate key: " + key);
+                String ak = line.substring(Util.ISO_8601_LEN + 1, Util.ISO_8601_LEN + 1 + Sanning.AK_LEN);
+                if (!keySet.add(ak)) {
+                    throw new IllegalStateException("duplicate anonymous key: " + ak);
                 }
                 sb.append(line).append('\n');
             }
@@ -220,7 +246,7 @@ final class Sanning {
         //       System public key can then be used for seal verification.
         //       Simple hash for now.
 
-        return toHex(hash(toBytes(title), toBytes(text), toBytes(options), toBytes(answers)));
+        return toHex(hash(title, text, String.join("", options), String.join("", answers)));
     }
 
     public String toString() {
@@ -265,8 +291,8 @@ final class Sanning {
      */
     public static void main(String[] args) throws Throwable {
         // Usage.
-        if ((args.length < 1) || (args.length > 3)) {
-            System.out.println("sanning.sh <sanning path> [<reference>] [<identity> [<answer option>]]");
+        if ((args.length < 1) || (args.length > 4)) {
+            System.out.println("sanning.sh <sanning path> [<identity> [<personal code> [<answer option>]]]");
             System.exit(2);
         }
         File file = new File(args[0]);
@@ -281,26 +307,29 @@ final class Sanning {
         String msg = null;
         if (args.length > 1) {
             try {
-                if (args.length == 2) {
-                    // Lookup previous answer.
-                    String ak = args[1];
-                    answer = sanning.lookupAnswer(ak);
-
-                    // Show answer for reference.
-                    msg = (answer != null) ? "Answer found!" : "No answer found for reference '" + ak + "'.";
-                } else { // args.length == 3
+                if ((args.length == 2) || (args.length == 3)) {
                     // Lookup previous answer.
                     String ik = args[1];
+                    String p = (args.length == 3) ? args[2] : null;
+
+                    answer = sanning.lookupAnswer(ik, p);
+
+                    // Show answer for reference.
+                    msg = (answer != null) ? "Answer found!" : "No answer found for identity '" + ik + "'.";
+                } else { // args.length == 4
+                    // Submit new answer.
+                    String ik = args[1];
+                    String p = args[2];
                     String ak = sanning.generateAK(ik);
-                    answer = sanning.lookupAnswer(ak);
+                    answer = sanning.lookupAnswer(ak, p);
 
                     if (answer == null) {
                         // Submit new answer.
-                        int option = Integer.parseInt(args[2]);
-                        answer = sanning.doAnswer(ik, option);
-                        msg = "Thank you! You answer has been recorded!";
+                        int optionNum = Integer.parseInt(args[3]);
+                        answer = sanning.doAnswer(ik, optionNum, p);
+                        msg = "Thank you!\nYou answer has been recorded.";
                     } else {
-                        msg = "You have already answered!";
+                        msg = "Previous answer found!";
                     }
                 }
 
@@ -327,7 +356,7 @@ final class Sanning {
 
         // Answer.
         if (answer != null) {
-            System.out.println("\nAnswer:    " + answer.option);
+            System.out.println("\nAnswer:    " + ((answer.o != null) ? answer.o : answer.po));
             System.out.println("Reference: " + answer.ak);
             System.out.println("Time:      " + answer.ts);
         }
@@ -337,7 +366,6 @@ final class Sanning {
         if (!lastTS.isEmpty()) {
             System.out.println("\nLast Updated: " + lastTS);
         }
-
     }
 
 }

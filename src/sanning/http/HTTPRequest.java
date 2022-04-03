@@ -1,15 +1,19 @@
 package sanning.http;
 
+import java.net.InetSocketAddress;
+
 public final class HTTPRequest {
 
    public final String line;
    public final Headers headers;
    public final String body;
+   public final InetSocketAddress remoteAddress;
 
-   public HTTPRequest(String request, Headers headers, String body) {
+   public HTTPRequest(String request, Headers headers, String body, InetSocketAddress remoteAddress) {
       this.line = request;
       this.headers = headers;
       this.body = body;
+      this.remoteAddress = remoteAddress;
    }
 
    /** Extract parameter value from request body. */

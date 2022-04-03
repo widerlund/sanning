@@ -1,29 +1,22 @@
 package sanning.http;
 
 import java.io.BufferedOutputStream;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.security.GeneralSecurityException;
-import java.security.KeyStore;
-import java.security.cert.X509Certificate;
 import java.util.concurrent.Executor;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.net.ServerSocketFactory;
-import javax.net.ssl.KeyManager;
-import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
 
 public final class HTTPServer implements Runnable {
 
@@ -41,15 +34,13 @@ public final class HTTPServer implements Runnable {
     private final ServerSocketFactory sslSocketFactory;
 
 
-    public HTTPServer(int port, HTTPProcessor httpProcessor, int readTimeout, int idleTimeout,
-                      String certPath, String certPass, Executor executor)
-        throws GeneralSecurityException, IOException {
+    public HTTPServer(int port, HTTPProcessor httpProcessor, int readTimeout, int idleTimeout, SSLContext sslContext, Executor executor) {
         this.port = port;
         this.httpProcessor = httpProcessor;
         this.readTimeout = readTimeout;
         this.idleTimeout = idleTimeout;
         this.executor = executor;
-        this.sslSocketFactory = (certPath != null) ? createSSLSocketFactory(certPath, certPass) : null;
+        this.sslSocketFactory = (sslContext != null) ? sslContext.getServerSocketFactory() : null;
     }
 
     public void run() {
@@ -144,7 +135,7 @@ public final class HTTPServer implements Runnable {
                         body = bodyCharset.decode(bodyBuffer).toString();
                     }
 
-                    HTTPRequest request = new HTTPRequest(requestLine, requestHeaders, body);
+                    HTTPRequest request = new HTTPRequest(requestLine, requestHeaders, body, (InetSocketAddress) socket.getRemoteSocketAddress());
                     requestLine = null;
                     HTTPResponse response = new HTTPResponse();
                     Headers responseHeaders = response.headers;
@@ -220,30 +211,6 @@ public final class HTTPServer implements Runnable {
             errorMsg.append(sw);
             response.body = ISO8859_1.encode(errorMsg.toString()).array();
         }
-    }
-
-    private static class NaiveTrustManager implements X509TrustManager {
-
-        public void checkClientTrusted(X509Certificate[] chain, String authType) { }
-        public void checkServerTrusted(X509Certificate[] chain, String authType) { }
-        public X509Certificate[] getAcceptedIssuers() { return new X509Certificate[]{}; }
-    }
-
-    private static ServerSocketFactory createSSLSocketFactory(String certPath, String certPass) throws GeneralSecurityException, IOException {
-        // Init keystore.
-        KeyStore keystore = KeyStore.getInstance("pkcs12");
-        keystore.load(new FileInputStream(certPath), certPass != null ? certPass.toCharArray() : null);
-
-        // Create key managers.
-        KeyManagerFactory kmFactory = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
-        kmFactory.init(keystore, certPass != null ? certPass.toCharArray() : null);
-        KeyManager[] keyManagers = kmFactory.getKeyManagers();
-
-        // Create TLS SSLContext.
-        SSLContext sslContext = SSLContext.getInstance("TLS");
-        sslContext.init(keyManagers, new TrustManager[]{new NaiveTrustManager()}, null);
-
-        return sslContext.getServerSocketFactory();
     }
 
 }

@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # Script to execute sanning command line tool.
-#  Usage: sanning.sh <sanning path> [<identity> [<answer option>]]
+#  Usage: sanning.sh <sanning path> [<identity> [<personal code> [<answer option>]]]
 
 # Set to Java 11 home.
 JAVA_HOME=/opt/my/java/jdk-11

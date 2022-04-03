@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sanning</title></head>
+  <style>
+    body { font-family: monospace; background-color: #fffaef; }
+  </style>
+<body>
+<h2>Sanning / ${TITLE} / Mobilt BankID</h2>
+<p>Personnummer för inloggning med Mobilt BankID.</p>
+<form action="confirm" method="post">
+  <label><input type="text" name="ik" placeholder="ååååmmddnnnn" autofocus/></label>
+  <input type="submit" value="OK"/>
+  <input type="hidden" name="option" value="${OPTION}"/>
+</form>
+<br>
+<a href="/">Avbryt</a>
+</body>
+</html>

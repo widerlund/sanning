@@ -1,12 +1,23 @@
 package sanning;
 
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
+import java.security.KeyStore;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.security.cert.X509Certificate;
 import java.text.SimpleDateFormat;
 import java.util.Base64;
+import javax.net.ssl.KeyManager;
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.TrustManagerFactory;
+import javax.net.ssl.X509TrustManager;
 
-final class Util {
+public final class Util {
 
     static final char[] HEX_CHAR = "0123456789abcdef".toCharArray();
     static final SimpleDateFormat ISO_8601 = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX");
@@ -40,13 +51,46 @@ final class Util {
 
     static String toISO8601(long ts) { return ISO_8601.format(ts); }
 
-    static byte[] hash(byte[]... bytes) {
+    static byte[] hash(String... vals) {
         MessageDigest digest;
         try { digest = MessageDigest.getInstance("SHA-256"); } catch (NoSuchAlgorithmException e) { throw new IllegalStateException("SHA-256 not available"); }
-        for (byte[] b : bytes) {
-            digest.update(b);
+        for (String val : vals) {
+            digest.update(toBytes(val));
         }
         return digest.digest();
+    }
+
+    public static SSLContext createSSLContext(String keyStorePath, String keyStorePass, boolean validateServer) throws GeneralSecurityException, IOException {
+        // Load key store.
+        KeyStore keyStore = KeyStore.getInstance("pkcs12");
+        keyStore.load(new FileInputStream(keyStorePath), keyStorePass.toCharArray());
+
+        // Create key managers.
+        KeyManagerFactory kmFactory = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+        kmFactory.init(keyStore, keyStorePass.toCharArray());
+        KeyManager[] keyManagers = kmFactory.getKeyManagers();
+
+        // Create server trust managers.
+        TrustManager[] trustManagers;
+        if (validateServer) {
+            TrustManagerFactory tmFactory = TrustManagerFactory.getInstance("X509");
+            tmFactory.init(keyStore);
+            trustManagers = tmFactory.getTrustManagers();
+        } else {
+            trustManagers = new TrustManager[] { new NaiveTrustManager() };
+        }
+
+        // Create TLS SSLContext.
+        SSLContext sslContext = SSLContext.getInstance("TLS");
+        sslContext.init(keyManagers, trustManagers, null);
+
+        return sslContext;
+    }
+
+    private static class NaiveTrustManager implements X509TrustManager {
+        public void checkClientTrusted(X509Certificate[] chain, String authType) { }
+        public void checkServerTrusted(X509Certificate[] chain, String authType) { }
+        public X509Certificate[] getAcceptedIssuers() { return new X509Certificate[]{}; }
     }
 
 }

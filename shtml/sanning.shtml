@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sanning</title>
   <style>
     body { font-family: monospace; background-color: #fffaef; }
@@ -28,7 +28,7 @@
 
 <p>${TEXT}</p>
 
-<form class="${OPTIONS_STATE}" action="${SANNING}/answer" method="post">
+<form class="${OPTIONS_STATE}" action="${SANNING}/auth" method="post">
   <ul>
     ${OPTIONS}
   </ul>
@@ -37,7 +37,7 @@
 <span class="${MESSAGE_STATE}">
 <h3>${MESSAGE}</h3>
 <table>
-  <tr><td>Answer:</td><td class="b">${OPTION}</td></tr>
+  <tr><td>Answer:</td><td class="b">${PRETTY_OPTION}</td></tr>
   <tr><td>Reference:</td><td class="b">${REF}</td></tr>
   <tr><td>Time:</td><td class="b">${ANSWER_TIME}</td></tr>
 </table>

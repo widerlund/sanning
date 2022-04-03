@@ -1,14 +1,14 @@
 <!DOCTYPE html>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sanning</title></head>
   <style>
     body { font-family: monospace; background-color: #fffaef; }
   </style>
 <body>
-<h1>Sanning</h1>
+<h1><a href="/">Sanning</a> / ERROR</h1>
 ${MESSAGE}
 </body>
 </html>

@@ -16,6 +16,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import javax.net.ssl.SSLContext;
 import sanning.http.HTTPProcessor;
 import sanning.http.HTTPRequest;
 import sanning.http.HTTPResponse;
@@ -23,13 +24,16 @@ import sanning.http.HTTPServer;
 
 final class SanningHTTP implements HTTPProcessor {
 
-    static final Pattern REQUEST_PATTERN = Pattern.compile("(?<method>GET|POST) \\/*(?<name>[^ \\/]*)(\\/?(?<op>[^ \\/]+)?)");
+    static final Pattern REQUEST_PATTERN = Pattern.compile("(?<method>GET|POST) /*(?<name>[^ /]*)(/?(?<op>[^ /]+)?)");
 
     final List<Sanning> sannings;
     final Map<String,Sanning> sanningMap;
     final Map<String,String> templateMap;
+    final Authenticator authhenticator;
 
-    public SanningHTTP() {
+    public SanningHTTP(Authenticator authenticator) {
+        this.authhenticator = authenticator;
+
         // Load sannings.
         sannings = new ArrayList<>();
         sanningMap = new HashMap<>();
@@ -42,10 +46,11 @@ final class SanningHTTP implements HTTPProcessor {
 
         // Load templates.
         templateMap = new HashMap<>();
+        loadTemplate("auth");
+        loadTemplate("confirm");
         loadTemplate("error");
         loadTemplate("list");
         loadTemplate("sanning");
-        loadTemplate("test-login");
     }
 
     public void process(HTTPRequest request, HTTPResponse response) {
@@ -61,6 +66,7 @@ final class SanningHTTP implements HTTPProcessor {
 
         response.headers.setValue("Content-Type", "text/html");
         CharSequence responseBody = null;
+        String error = null;
         if ("GET".equals(method)) {
             if (name.isEmpty()) {
                 // List sannings.
@@ -80,23 +86,49 @@ final class SanningHTTP implements HTTPProcessor {
                 }
             }
         } else if ("POST".equals(method)) {
-            String ik = request.extractBodyParameter("ik");
-            String option = request.extractBodyParameter("option");
+            Sanning sanning = sanningMap.get(name);
+            if (sanning == null) {
+                throw new IllegalArgumentException("invalid request (no such sanning): " + request.line);
+            }
 
-            if (ik == null) {
-                // Send answer option through login page.
-                responseBody = renderTemplate("test-login",
-                                              "SANNING", name,
-                                              "OPTION", option);
-            } else {
-                // Submit answer option to sanning.
-                try {
-                    Sanning sanning = sanningMap.get(name);
-                    Answer answer = sanning.doAnswer(ik, Integer.parseInt(option));
-                    responseBody = renderSanning(name, answer);
-                } catch (IOException e) {
-                    response.headers.setValue("Content-Type", "text/plain");
-                    responseBody = "ERROR: " + e.getMessage();
+            String optionStr = request.extractBodyParameter("option");
+            if (optionStr == null) {
+                throw new IllegalArgumentException("invalid request (option not present): " + request.body);
+            }
+            int option = Integer.parseInt(optionStr);
+            String prettyOption = sanning.options[option];
+
+            String ik = request.extractBodyParameter("ik");
+
+            if ("auth".equals(op)) {
+                responseBody = renderTemplate("auth",
+                                              "TITLE", sanning.title,
+                                              "OPTION", optionStr);
+            } else if ("confirm".equals(op)) {
+                String orderRef = "";
+                if (authhenticator != null) {
+                    orderRef = authhenticator.initAuth(ik, request.remoteAddress.getAddress().getHostAddress());
+                }
+                responseBody = renderTemplate("confirm",
+                                              "TITLE", sanning.title,
+                                              "PRETTY_OPTION", prettyOption,
+                                              "IK", ik,
+                                              "OPTION", optionStr,
+                                              "ORDER_REF", orderRef);
+
+            } else if ("answer".equals(op)) {
+                if ((authhenticator != null) && !authhenticator.checkAuth(request.extractBodyParameter("orderRef"))) {
+                    error = "Authentication failed!";
+                } else {
+                    String p = request.extractBodyParameter("p");
+
+                    // Submit answer option to sanning.
+                    try {
+                        Answer answer = sanning.doAnswer(ik, Integer.parseInt(optionStr), p);
+                        responseBody = renderSanning(name, answer);
+                    } catch (IOException e) {
+                        error = e.getMessage();
+                    }
                 }
             }
         }
@@ -105,6 +137,11 @@ final class SanningHTTP implements HTTPProcessor {
         response.headers.addValue("Pragma", "no-cache");
         response.headers.setValue("Cache-Control", "no-cache");
         response.headers.setValue("Expires", "Fri, 1 Jan 1971 00:00:00 GMT");
+
+        // Check error.
+        if (error != null) {
+            responseBody = renderTemplate("error", "MESSAGE", error);
+        }
 
         // Create body content.
         byte[] content = toBytes(responseBody);
@@ -131,7 +168,7 @@ final class SanningHTTP implements HTTPProcessor {
                                      "<tr><td>Total:</td><td>%d</td></tr>\n", total));
 
         // RESULT data file href.
-        String result = "<a href=" + name + "/result>" + name + "</a>";
+        String result = "<a href=/" + name + "/result>" + name + "</a>";
 
         // LAST_UPDATED
         String lastUpdated = sanning.lastTS();
@@ -151,8 +188,8 @@ final class SanningHTTP implements HTTPProcessor {
                               "OPTIONS_STATE", (answer == Answer.EMPTY) ? "enabled" : "disabled",
                               "OPTIONS", options,
                               "MESSAGE_STATE", (answer != Answer.EMPTY) ? "enabled" : "disabled",
-                              "MESSAGE", answer.isOld ? "You have already answered!" : "Thank you! Your answer has been recorded!",
-                              "OPTION", answer.option,
+                              "MESSAGE", answer.isOld ? "You have already answered!" : "Thank you!<br>Your answer has been recorded.",
+                              "PRETTY_OPTION", (answer.o != null) ? answer.o : answer.po,
                               "REF", answer.ak,
                               "ANSWER_TIME", answer.ts,
                               "SUMMARY", summary,
@@ -197,25 +234,30 @@ final class SanningHTTP implements HTTPProcessor {
 
     public static void main(String[] args) throws Throwable {
         // Usage.
-        if ((args.length != 1) && (args.length != 3)) {
-            System.out.println("sanning-http.sh <port> [<certificate> <cert password>]");
+        if ((args.length != 2) && (args.length != 4)) {
+            System.out.println("sanning-http.sh <port> <authenticator URL> [<keystore path> <keystore pass>]");
             System.exit(2);
         }
 
         int port = Integer.parseInt(args[0]);
 
         // TLS certificate.
-        String certPath = null;
-        String certPass = null;
-        if (args.length == 3) {
-            certPath = args[1];
-            certPass = args[2];
+        String keyStorePath = null;
+        String keyStorePass = null;
+        if (args.length == 4) {
+            keyStorePath = args[2];
+            keyStorePass = args[3];
         }
+        SSLContext sslContext = (keyStorePath != null) ? Util.createSSLContext(keyStorePath, keyStorePass, false) : null;
+
+        // Authenticator.
+        String authUrl = args[1];
+        Authenticator authenticator = "test".equals(authUrl) ? null : new Authenticator(authUrl, sslContext);
 
         // HTTP server.
         Executor executor = Executors.newFixedThreadPool(16);
-        HTTPProcessor sannProcessor = new SanningHTTP();
-        HTTPServer httpServer = new HTTPServer(port, sannProcessor, 20000, 60000, certPath, certPass, executor);
+        HTTPProcessor sannProcessor = new SanningHTTP(authenticator);
+        HTTPServer httpServer = new HTTPServer(port, sannProcessor, 20000, 60000, sslContext, executor);
         executor.execute(httpServer);
     }
 
