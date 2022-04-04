@@ -146,7 +146,7 @@ final class Sanning {
 
     /** Timestamp of last answer. */
     synchronized String lastTS() {
-        String lastAnswerLine = answers.substring(Math.max(0, answers.length() - (Util.ISO_8601_LEN + 1 + Sanning.AK_LEN + 1 + Sanning.PO_LEN)));
+        String lastAnswerLine = answers.substring(Math.max(0, answers.length() - (Util.ISO_8601_LEN + 1 + Sanning.AK_LEN + 1 + Sanning.PO_LEN + 1)));
         int ix = lastAnswerLine.indexOf('\n') + 1;
         if (ix >= lastAnswerLine.length()) {
             ix = 0;
@@ -311,8 +311,9 @@ final class Sanning {
                     // Lookup previous answer.
                     String ik = args[1];
                     String p = (args.length == 3) ? args[2] : null;
+                    String ak = sanning.generateAK(ik);
 
-                    answer = sanning.lookupAnswer(ik, p);
+                    answer = sanning.lookupAnswer(ak, p);
 
                     // Show answer for reference.
                     msg = (answer != null) ? "Answer found!" : "No answer found for identity '" + ik + "'.";
@@ -346,7 +347,7 @@ final class Sanning {
         for (int ix = 0; ix < sanning.summary.length; ix++) {
             int count = sanning.summary[ix];
             float percentage = total > 0 ? (float)count * 100 / total : 0f;
-            System.out.printf("%-10s %6d  %6.2f%%%n", sanning.options[ix], count, percentage);
+            System.out.printf("%-16s %6d  %6.2f%%%n", sanning.options[ix], count, percentage);
         }
 
         // Message.

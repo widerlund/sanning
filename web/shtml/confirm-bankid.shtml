@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sanning</title></head>
+  <style>
+    body { font-family: monospace; background-color: #fffaef; }
+  </style>
+<body>
+<h2>Sanning / ${TITLE} / Mobile BankID</h2>
+<img src="/images/BankID_logo.svg" width="5%" height="auto"/>
+<p>
+  To login, you need to open Mobile BankID on the device connected to your specified social security number.<br><br>
+
+  After authentication is completed, enter a personal code to protect your answer.<br>
+  Please remember your personal code to verify your answer later!<br>
+</p>
+<p>
+Your answer: ${PRETTY_OPTION}
+</p>
+<form action="answer" method="post">
+  <label>Personal code: <input type="text" name="p" autofocus/></label><br>
+  <input type="hidden" name="ik" value="${IK}"/>
+  <input type="hidden" name="option" value="${OPTION}"/>
+  <input type="hidden" name="orderRef" value="${ORDER_REF}"/>
+  <br>
+  <input type="submit" value="Confirm"/>
+</form>
+<br>
+<a href="/">Abort</a>
+</body>
+</html>

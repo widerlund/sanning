@@ -8,14 +8,19 @@
     body { font-family: monospace; background-color: #fffaef; }
   </style>
 <body>
-<h2>Sanning / ${TITLE} / Mobilt BankID</h2>
-<p>Personnummer för inloggning med Mobilt BankID.</p>
+<h2>Sanning / ${TITLE} / Mobile BankID</h2>
+<img src="/images/BankID_logo.svg" width="5%" height="auto"/>
+<p>
+  Log in with Mobile BankID<br><br>
+
+  Personal identiy code
+</p>
 <form action="confirm" method="post">
-  <label><input type="text" name="ik" placeholder="ååååmmddnnnn" autofocus/></label>
+  <label><input type="text" name="ik" placeholder="yyyymmddnnnn" autofocus/></label>
   <input type="submit" value="OK"/>
   <input type="hidden" name="option" value="${OPTION}"/>
 </form>
 <br>
-<a href="/">Avbryt</a>
+<a href="/">Abort</a>
 </body>
 </html>

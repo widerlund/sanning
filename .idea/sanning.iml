@@ -12,7 +12,7 @@
     <orderEntry type="module-library" scope="RUNTIME">
       <library>
         <CLASSES>
-          <root url="file://$MODULE_DIR$/shtml" />
+          <root url="file://$MODULE_DIR$/web" />
         </CLASSES>
         <JAVADOC />
         <SOURCES />

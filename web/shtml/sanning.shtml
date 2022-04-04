@@ -48,7 +48,7 @@
   ${SUMMARY}
 </table>
 
-<p>Result data file: <a href="${RESULT}">${RESULT}</a></p>
+<p>Download result data file: <a href="${RESULT}">${RESULT}</a></p>
 
 <p class="ts">${LAST_UPDATED}</p>
 </body>

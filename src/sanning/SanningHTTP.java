@@ -29,9 +29,10 @@ final class SanningHTTP implements HTTPProcessor {
     final List<Sanning> sannings;
     final Map<String,Sanning> sanningMap;
     final Map<String,String> templateMap;
+    final Map<String,byte[]> imageMap;
     final Authenticator authhenticator;
 
-    public SanningHTTP(Authenticator authenticator) {
+    SanningHTTP(String authTemplate, Authenticator authenticator) {
         this.authhenticator = authenticator;
 
         // Load sannings.
@@ -46,11 +47,15 @@ final class SanningHTTP implements HTTPProcessor {
 
         // Load templates.
         templateMap = new HashMap<>();
-        loadTemplate("auth");
-        loadTemplate("confirm");
+        loadTemplate(authTemplate, "auth");
+        loadTemplate("confirm-bankid", "confirm");
         loadTemplate("error");
         loadTemplate("list");
         loadTemplate("sanning");
+
+        // Load images.
+        imageMap = new HashMap<>();
+        loadImage("BankID_logo.svg");
     }
 
     public void process(HTTPRequest request, HTTPResponse response) {
@@ -59,12 +64,28 @@ final class SanningHTTP implements HTTPProcessor {
         if (!m.find()) {
             throw new IllegalArgumentException("invalid request: " + request);
         }
-
         String method = m.group("method");
         String name = m.group("name");
         String op = m.group("op");
 
-        response.headers.setValue("Content-Type", "text/html");
+        // Dispatch.
+        if ((op != null) && op.endsWith(".svg")) {
+            // Process SVG image.
+            response.headers.setValue("Content-Type", "image/svg+xml");
+            response.body = imageMap.get(op);
+        } else {
+            // Process Sanning application request.
+            processAppRequest(request, response, method, name, op);
+        }
+
+        // No cache.
+        response.headers.addValue("Pragma", "no-cache");
+        response.headers.setValue("Cache-Control", "no-cache");
+        response.headers.setValue("Expires", "Fri, 1 Jan 1971 00:00:00 GMT");
+    }
+
+    void processAppRequest(HTTPRequest request, HTTPResponse response, String method, String name, String op) {
+        response.headers.setValue("Content-Type", "text/html; charset=UTF-8");
         CharSequence responseBody = null;
         String error = null;
         if ("GET".equals(method)) {
@@ -74,7 +95,7 @@ final class SanningHTTP implements HTTPProcessor {
             } else {
                 if ("result".equals(op)) {
                     // Download result.
-                    response.headers.setValue("Content-Type", "text/plain");
+                    response.headers.setValue("Content-Type", "text/plain; charset=UTF-8");
                     try {
                         responseBody = sanningMap.get(name).persist();
                     } catch (IOException e) {
@@ -105,16 +126,17 @@ final class SanningHTTP implements HTTPProcessor {
                                               "TITLE", sanning.title,
                                               "OPTION", optionStr);
             } else if ("confirm".equals(op)) {
-                String orderRef = "";
-                if (authhenticator != null) {
-                    orderRef = authhenticator.initAuth(ik, request.remoteAddress.getAddress().getHostAddress());
+                String orderRef = (authhenticator != null) ? authhenticator.initAuth(ik, request.remoteAddress.getAddress().getHostAddress()) : "";
+                if (orderRef != null) {
+                    responseBody = renderTemplate("confirm",
+                                                  "TITLE", sanning.title,
+                                                  "PRETTY_OPTION", prettyOption,
+                                                  "IK", ik,
+                                                  "OPTION", optionStr,
+                                                  "ORDER_REF", orderRef);
+                } else {
+                    error = "Authentication failed!";
                 }
-                responseBody = renderTemplate("confirm",
-                                              "TITLE", sanning.title,
-                                              "PRETTY_OPTION", prettyOption,
-                                              "IK", ik,
-                                              "OPTION", optionStr,
-                                              "ORDER_REF", orderRef);
 
             } else if ("answer".equals(op)) {
                 if ((authhenticator != null) && !authhenticator.checkAuth(request.extractBodyParameter("orderRef"))) {
@@ -133,20 +155,13 @@ final class SanningHTTP implements HTTPProcessor {
             }
         }
 
-        // No cache.
-        response.headers.addValue("Pragma", "no-cache");
-        response.headers.setValue("Cache-Control", "no-cache");
-        response.headers.setValue("Expires", "Fri, 1 Jan 1971 00:00:00 GMT");
-
         // Check error.
         if (error != null) {
             responseBody = renderTemplate("error", "MESSAGE", error);
         }
 
-        // Create body content.
-        byte[] content = toBytes(responseBody);
-        response.headers.setValue("Content-Length", "" + content.length);
-        response.body = content;
+        // Body content.
+        response.body = toBytes(responseBody);
     }
 
     String renderSanning(String name, Answer answer) {
@@ -216,6 +231,7 @@ final class SanningHTTP implements HTTPProcessor {
         return template;
     }
 
+    /** Load sanning text file with specified name. */
     void loadSanning(String name) {
         Sanning sanning = sanningMap.get(name);
         if (sanning == null) {
@@ -225,11 +241,28 @@ final class SanningHTTP implements HTTPProcessor {
         }
     }
 
-    void loadTemplate(String name) {
+    /**
+     * Load template with specified name. Optional alias can be used as actual name.
+     * @param name template file name
+     * @param alias optional alias name to use as actual name
+     */
+    void loadTemplate(String name, String... alias) {
         //noinspection ConstantConditions
-        String template = new BufferedReader(new InputStreamReader(getClass().getResourceAsStream("/" + name + ".shtml"))).
+        String template = new BufferedReader(new InputStreamReader(getClass().getResourceAsStream("/shtml/" + name + ".shtml"))).
             lines().parallel().collect(Collectors.joining("\n"));
-        templateMap.put(name, template);
+        templateMap.put((alias.length > 0) ? alias[0] : name, template);
+    }
+
+    /** Load image with specified file name. */
+    @SuppressWarnings("SameParameterValue")
+    void loadImage(String fileName) {
+        try {
+            //noinspection ConstantConditions
+            byte[] imageBytes = getClass().getResourceAsStream("/images/" + fileName).readAllBytes();
+            imageMap.put(fileName, imageBytes);
+        } catch (IOException e) {
+            throw new RuntimeException("error loading image: " + e.getMessage(), e);
+        }
     }
 
     public static void main(String[] args) throws Throwable {
@@ -253,10 +286,11 @@ final class SanningHTTP implements HTTPProcessor {
         // Authenticator.
         String authUrl = args[1];
         Authenticator authenticator = "test".equals(authUrl) ? null : new Authenticator(authUrl, sslContext);
+        String authTemplate = (authenticator != null) ? "auth-bankid" : "auth-test";
 
         // HTTP server.
         Executor executor = Executors.newFixedThreadPool(16);
-        HTTPProcessor sannProcessor = new SanningHTTP(authenticator);
+        HTTPProcessor sannProcessor = new SanningHTTP(authTemplate, authenticator);
         HTTPServer httpServer = new HTTPServer(port, sannProcessor, 20000, 60000, sslContext, executor);
         executor.execute(httpServer);
     }

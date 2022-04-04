@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sanning</title></head>
+  <style>
+    body { font-family: monospace; background-color: #fffaef; }
+    table, tr, td { border: none; }
+  </style>
+<body>
+<h2>Sanning / ${TITLE} / Mobile BankID</h2>
+<p>
+  Log in with test identity<br>
+  <br>
+  This is a test authentication page.<br>
+  Use any identity you wish!<br>
+  <br>
+  enter a personal code to protect your answer.<br>
+  Please remember your personal code to verify your answer later!
+</p>
+<form action="answer" method="post">
+  <table>
+    <tr><td><label for="ik">Identity:</label></td><td><input type="text" id="ik" name="ik" autofocus/></td></tr>
+    <tr><td><label for="p">Personal code:</label></td><td><input type="text" id="p" name="p"/></td></tr>
+    <tr><td colspan="2" align="right"><input type="submit" value="OK"/></td></tr>
+  </table>
+  <input type="hidden" name="option" value="${OPTION}"/>
+</form>
+<br>
+<a href="/">Abort</a>
+</body>
+</html>

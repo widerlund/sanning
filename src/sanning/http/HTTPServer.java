@@ -20,11 +20,8 @@ import javax.net.ssl.SSLContext;
 
 public final class HTTPServer implements Runnable {
 
-    public static final Charset US_ASCII = StandardCharsets.US_ASCII;
-    public static final Charset ISO8859_1 = StandardCharsets.ISO_8859_1;
-
     private static final Pattern HEADER_PATTERN = Pattern.compile("(?i)([^:]*):\\s(.*?)\\s*");
-    private static final Pattern CHARSET_PATTERN = Pattern.compile("[^;]*;charset=(\\S*)\\s*$");
+    private static final Pattern CHARSET_PATTERN = Pattern.compile("[^;]*;\\scharset=(\\S*)\\s*$");
 
     private final int port;
     private final HTTPProcessor httpProcessor;
@@ -124,7 +121,7 @@ public final class HTTPServer implements Runnable {
                     }
                     String body = null;
                     if (bodyBuffer != null) {
-                        Charset bodyCharset = ISO8859_1;
+                        Charset bodyCharset = StandardCharsets.ISO_8859_1;
                         String contentType = requestHeaders.singleValue("Content-Type");
                         if (contentType != null) {
                             Matcher m = CHARSET_PATTERN.matcher(contentType);
@@ -167,7 +164,7 @@ public final class HTTPServer implements Runnable {
                         }
                     }
                     sb.append("\r\n");
-                    ostream.write(US_ASCII.encode(sb.toString()).array());
+                    ostream.write(StandardCharsets.US_ASCII.encode(sb.toString()).array());
 
                     if (response.body != null) {
                         ostream.write(response.body);
@@ -203,13 +200,13 @@ public final class HTTPServer implements Runnable {
             response.statusCode = 500;
             response.reasonPhrase = "Internal Server Error";
             response.headers.setValue("Connection", "close");
-            response.headers.setValue("Content-Type", "text/plain;charset=iso-8859-1");
+            response.headers.setValue("Content-Type", "text/plain");
             StringBuilder errorMsg = new StringBuilder();
             errorMsg.append("500 INTERNAL SERVER ERROR").append("\n\n");
             StringWriter sw = new StringWriter();
             e.printStackTrace(new PrintWriter(sw));
             errorMsg.append(sw);
-            response.body = ISO8859_1.encode(errorMsg.toString()).array();
+            response.body = StandardCharsets.US_ASCII.encode(errorMsg.toString()).array();
         }
     }
 

@@ -5,6 +5,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpClient.Version;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -39,7 +40,7 @@ class Authenticator {
 
     private String call(String operation, String requestBody, String returnParameter) {
         HttpRequest request = HttpRequest.newBuilder()
-                                         .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+                                         .POST(HttpRequest.BodyPublishers.ofString(requestBody, StandardCharsets.US_ASCII))
                                          .uri(URI.create(authUrl + operation))
                                          .setHeader("User-Agent", "Sanning")
                                          .header("Content-Type", "application/json")
